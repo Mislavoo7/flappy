@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html>
+<body>	
+<style>
+canvas {
+	display: block;
+	border:1px solid #c3c3c3;
+	margin: 0 auto;
+	width: 530px;
+	height: 850px;
+}
+</style>
+<canvas id="canvas"></canvas>
+
+<script src="touch-emulator.js"></script>   <!-- EMULATOR ZA TOUCH-->
+<script> TouchEmulator(); </script>
+
+<script>
+var canvas = document.getElementById('canvas');
+var context = canvas.getContext('2d');
+var flappysprite = new Image();
+
+var frame=0, gravitacija=1, skok=17, reset=0, brzina=2, bodovi=0;
+
+var play=false, kill=false, gore=false;
+
+/*KONTROLE*/
+var map = []; // tu ću puniti key kodove koje domijem kad stisnem tipku (kad stisnem postanu true, a pusti onda false)
+onkeydown = onkeyup = function(e){
+	e = e || event; // event zbog internet exp
+	map[e.keyCode] = e.type == 'keydown';  
+	if (map[38] && !kill) gore=true; play=true;
+}
+canvas.addEventListener('touchstart', function(e){
+	var touchobj = e.changedTouches[0]
+		if (!kill) gore=true; play=true;
+		}, false)
+
+/*OBJEKTI*/
+var cijevi = {	sx: [1, 213],
+		sy: 119,
+		sw: 201,
+		sh: 433,
+		dx: [canvas.width, canvas.width+canvas.width/2, 2*canvas.width],
+		dy: [45*(Math.random() * 1.22+1).toFixed(2), 45*(Math.random() * 1.22+1).toFixed(2), 45*(Math.random() * 1.22+1).toFixed(2)],
+		dw: canvas.width/4+1,
+		dh: canvas.height/2,
+}
+
+var pod = {	sx: 0,
+		sy: 0,
+		sw: 530,
+		sh: 107,
+		dx: [0, canvas.width],
+		dy: 4*canvas.height/5,
+		dw: canvas.width+1,
+		dh: canvas.height/5,
+}
+
+var ptica = {	sx: 415,
+		sy: [118, 268],
+		sw: 133,
+		sh: 127,
+		dx: canvas.width/2,
+		dy: canvas.height/2-30,
+		dw: 30,
+		dh: 17
+}
+
+var poz= {	sx: 0,
+		sy: 578,
+		sw: 550,
+		sh: 416,
+		dx: 0,
+		dy: 0,
+		dw: canvas.width,
+		dh: 140
+}
+
+/*CRTA CIJEVI I VRACA RUPU IZMEDU CIJEVI: Prvo nacrta pozadinu da bude iza svega. Funkcija dobije atribute dx i dy iz objekta CIJEVI. Pozicija x se dobije tako da prva for loop svakoj x poziciji oduzme BRZINU ako je ptica živa (KILL==false). Ako je jedan X izašao lijevo iz kanvasa on dobije novu poziciju izvan kanvasa ali desno. Isto tada taj doljnja cijev dobije novu random y poziciju. Iduća for loop izračunava j koji će mijenjati array cijev.sx i tako izvor odakle će se uzimati slika. Ako je j nula onda konacni_y je jednak dolje_y i sada je gotova DOLJNJA CIJEV. ako je j jednak 1 onda, a konacni_y je doljnja cijev -40 (velicina prolaza) - visina cijevi (cijev.dh) i tada se DONJA CIJEV nacrta. Tada se napravi još i varijabla rupa_pocinje koja oznčava početak rupe. Kraj rupe je y (cijev.dy). Kada x bude na pola ekrana onda bodovi rastu.*/
+var crta_cijevi = function (x, y) {
+
+	context.drawImage(	flappysprite,		
+				poz.sx,
+				poz.sy,
+				poz.sw,		
+				poz.sh, 		
+				poz.dx,		
+				poz.dy, 		
+				poz.dw, 		
+				poz.dh);
+
+	for (var i=0; i<x.length; i++) {
+
+		if (play && !kill) x[i]-=brzina;
+		var dolje_y=y;
+		var rupa_zavrsava=y;
+	
+		if (x[i]+cijevi.dw < 0) {
+			x[i]=canvas.width+cijevi.dw;
+			dolje_y[i]=45*(Math.random() * 1.22+1).toFixed(2);
+		}
+
+		for (var j=0; j<2; j++) {
+
+			if (j==0) var konacni_y=dolje_y;
+			else {	var konacni_y=[dolje_y[0]-40-cijevi.dh, dolje_y[1]-40-cijevi.dh, dolje_y[2]-40-cijevi.dh];
+				var rupa_pocinje=[dolje_y[0]-40, dolje_y[1]-40, dolje_y[2]-40]; }
+
+			context.drawImage(	flappysprite,		
+						cijevi.sx[j],
+						cijevi.sy,
+						cijevi.sw,		
+						cijevi.sh, 		
+						x[i],		
+						konacni_y[i], 		
+						cijevi.dw, 		
+						cijevi.dh);
+		}
+		if (x[i]==canvas.width/2) bodovi++;
+	}
+	return [x, rupa_pocinje, rupa_zavrsava];  						
+}
+
+/*CRTA POD: nacrta 2 poda, jedan od 0, a drugi od canvas.width. Oba se miču za brzinu istu kao i cijevi. Kada prvi pod izađe lijevo iz kanvasa napravi se ponovo na canvas.width. Ova funkcija napiše i bodove koji rastu kada u CRTA CIJEVI bilo koji x bude na pola ekrana.*/
+var crta_pod = function (x) {
+	for (var i=0; i<2; i++) {
+
+		if (play && !kill) x[i]-=brzina;
+
+		if (x[i]+pod.dw < 0) x[i]=canvas.width;
+
+
+		context.drawImage(	flappysprite,		
+					pod.sx,
+					pod.sy,
+					pod.sw,		
+					pod.sh, 		
+					x[i],		
+					pod.dy, 		
+					pod.dw+3, //malo je siri nego sto treba da ne bude razmaka između dva poda		
+					pod.dh);
+	}
+
+	context.font = "bold 30px Arial";
+	context.fillStyle="white";
+	context.fillText(bodovi, 10, canvas.height-2, 200);
+}
+
+/*PTICA LETI dobije atribute x i dva y vraćene iz funkcije CRTA CIJEVI. ako je jednom stisnuta tipka ili ekran onda GRAVITACIJA krene dodavati ptici y 1, ako se stisne tipka onda GORE postane true i ptica y se smanji za SKOK, a GORE postane false da ptica ne odleti izvan canvasa. Idući for i if loop provjere dal se ptica sudarila s bilo kojom cijevi ili s podom. Ako je onda varijabla KILL postane true, a gravitacija se poveća da ptica brže padne. Ako padne ispod poda onda isto KILL bude true, GRAVITACIJA postane 0, a ptica stane na pod. Ptica prestane padati i RESET se krene odbrojavati. RESET će za cca. sekundu biti 60 jer se requestanimationframe izvrsava 60 puta u sekundi. Nakon toga sve varijable postanu onakve kakve su bile prije prvog klika. Varijabla frame služi da se krila animiraju. Kada je FRAME 30 onda opet bude 0, a dok je manji od 10 ili veći od 25 (i ako nije KILL) onda je krilo gore inače je dolje. context.drawImage nacrta pticu. */
+
+var ptica_leti= function (rupa) {
+	var x=rupa[0];
+	var rupa_pocinje=rupa[1];
+	var rupa_zavrsava=rupa[2];
+
+	if (play) ptica.dy += gravitacija;
+	if (gore) ptica.dy -= skok; 
+
+	gore=false;
+
+	for (var i=0; i<3; i++) {
+		
+		if (	(ptica.dx+ptica.dw-3>x[i] && ptica.dx+3<x[i]+cijevi.dw && (ptica.dy+3<rupa_pocinje[i] || ptica.dy+ptica.dh-3 > rupa_zavrsava[i]) )
+			 || (ptica.dy+ptica.dh>pod.dy)	) {
+
+			kill=true; gravitacija=5;
+		}	
+	}	
+	
+	if (ptica.dy+ptica.dh>pod.dy) {	
+		kill=true;
+		ptica.dy=pod.dy-ptica.dh+4;
+		reset++;
+		if (reset>60)	{
+			play=kill=false
+		
+			cijevi.dx=[canvas.width, canvas.width+canvas.width/2, 2*canvas.width];
+			cijevi.dy=[45*(Math.random() * 1.22+1).toFixed(2), 45*(Math.random() * 1.22+1).toFixed(2), 45*(Math.random() * 1.22+1).toFixed(2)];
+
+			pod.dx=[0, canvas.width];
+			
+			ptica.dx=canvas.width/2;
+			ptica.dy=canvas.height/2-30;
+
+			reset=0;
+			gravitacija=1;
+			bodovi=0;
+		}
+	}
+
+	if ((frame<10 || frame>25) && !kill) var krila=1;		
+	else krila=0;
+
+	if (frame>30) frame=0; 
+	frame++;
+
+	context.drawImage(	flappysprite,		
+				ptica.sx,
+				ptica.sy[krila],
+				ptica.sw,		
+				ptica.sh, 		
+				ptica.dx,	
+				ptica.dy, 		
+				ptica.dw, 		
+				ptica.dh);
+}
+
+/*Funkcija IGRA se pokrene kada se slika uplouda. window.requestAnimationFrame(animiraj) pokrene funkciju ANIMIRAJ i izvršava ju 60 puta u sekundi. Funkcija ANIMIRAJ prvo obriše sve, nakon toga pokrene funkciju PTICA_LETI koja ima atribut ono što je funkcija CRTAJ_CIJEVI vratila. Pokrene i funkciju CRTA_POD s atributom array pod.dx. Na kraju funkcija ANIMIRAJ sama sebe pokrene. t0, t1 mjere koliko brzo se ponavlja funkcija*/
+function igra(){
+
+	function animiraj(){
+
+		context.clearRect(0,0,canvas.width, canvas.height);
+
+		ptica_leti(crta_cijevi(cijevi.dx, cijevi.dy));		
+		crta_pod(pod.dx);
+
+		window.requestAnimationFrame(animiraj);
+	}
+	
+	window.requestAnimationFrame(animiraj);
+}
+flappysprite.src = 'flappysprite.png';
+flappysprite.onload = function() {igra(this);};
+
+
+</script>
+</body>
+</html>
